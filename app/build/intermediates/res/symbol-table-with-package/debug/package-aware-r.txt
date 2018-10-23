@@ -377,6 +377,7 @@ color foreground_material_dark
 color foreground_material_light
 color highlighted_text_material_dark
 color highlighted_text_material_light
+color ic_launcher_background
 color material_blue_grey_800
 color material_blue_grey_900
 color material_blue_grey_950
@@ -733,6 +734,7 @@ id list_item
 id map
 id media_actions
 id message
+id messageButton
 id middle
 id multiply
 id never
@@ -855,6 +857,7 @@ layout select_dialog_singlechoice_material
 layout support_simple_spinner_dropdown_item
 mipmap ic_launcher
 mipmap ic_launcher_round
+mipmap icon
 string abc_action_bar_home_description
 string abc_action_bar_up_description
 string abc_action_menu_overflow_description
@@ -914,6 +917,7 @@ string common_open_on_phone
 string common_signin_button_text
 string common_signin_button_text_long
 string google_maps_key
+string messageButton
 string search_menu_title
 string status_bar_notification_info_overflow
 string title_activity_google_maps
