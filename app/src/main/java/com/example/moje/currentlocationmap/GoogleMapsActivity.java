@@ -1,16 +1,22 @@
 package com.example.moje.currentlocationmap;
 
 import android.Manifest;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationManager;
+import android.net.ConnectivityManager;
 import android.os.Build;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.view.View;
 import android.widget.Toast;
 
@@ -27,8 +33,6 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-
-import javax.security.auth.callback.PasswordCallback;
 
 public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
 
@@ -50,6 +54,7 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
             checkUserLocationPermission();
+            statusNetworkCheck();
         }
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -57,6 +62,9 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
         mapFragment.getMapAsync(this);
     }
 
+    /**
+     * Method checks if map is ready to use, then get user location.
+     */
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -70,6 +78,12 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
 
     }
 
+    /**
+     * Method checks user location permission.
+     * @return
+     * true if user allowed location permission<br>
+     * false if user did not allowed location permission
+     */
     public boolean checkUserLocationPermission() {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -83,10 +97,17 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
             }
             return false;
         } else {
+            statusLocationCheck();
             return true;
         }
     }
 
+    /**
+     * Method checks user SMS (message) permission.
+     * @return
+     * true if user allowed SMS permission<br>
+     * false if user did not allowed SMS permission
+     */
     public boolean checkUserSMSPermission() {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
@@ -105,6 +126,9 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
         }
     }
 
+    /**
+     * Method is handling the permission request response.
+     */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 
@@ -122,21 +146,24 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
 
                         mMap.setMyLocationEnabled(true);
                     }
+                    statusLocationCheck();
                 } else {
 
-                    Toast.makeText(this, "Location Permission Denied!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Location permission denied!", Toast.LENGTH_SHORT).show();
                 }
                 return;
 
             case Request_User_SMS_Code:
                 if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
 
-                    Toast.makeText(this, "SMS Permission Denied!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "SMS permission denied!", Toast.LENGTH_SHORT).show();
                 }
                 return;
         }
     }
-
+    /**
+     * Method is building Google Api Client.
+     */
     protected synchronized void buildGoogleApiClient() {
 
         googleApiClient = new GoogleApiClient.Builder(this)
@@ -148,6 +175,9 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
         googleApiClient.connect();
     }
 
+    /**
+     * Method is replacing marker if location is changed.
+     */
     @Override
     public void onLocationChanged(Location location) {
 
@@ -177,6 +207,9 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
         }
     }
 
+    /**
+     * Method is updating location.
+     */
     @Override
     public void onConnected(@Nullable Bundle bundle) {
 
@@ -202,6 +235,9 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
 
     }
 
+    /**
+     * Method redirects to sending a message with current location after button click.
+     */
     public void buttonOnClick(View V) {
 
         Intent myIntent = new Intent(Intent.ACTION_SEND);
@@ -216,7 +252,72 @@ public class GoogleMapsActivity extends FragmentActivity implements OnMapReadyCa
             }
         } else {
 
-            Toast.makeText(this, "Location Permission Denied!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Location permission denied or location is disabled!", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * Method checks if the location is on.
+     */
+    public void statusLocationCheck() {
+        final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            buildAlertMessageNoGps();
+        }
+    }
+
+    /**
+     * Method checks if the network is on.
+     */
+    public void statusNetworkCheck() {
+        final ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if (!manager.isDefaultNetworkActive()) {
+            buildAlertMessageNoNetwork();
+
+        }
+    }
+
+    /**
+     * Method displays a message about the switched off location and allows it to be enabled in the settings.
+     */
+    private void buildAlertMessageNoGps() {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Your location seems to be disabled, do you want to enable it?")
+                .setCancelable(false)
+                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    public void onClick(final DialogInterface dialog, final int id) {
+                        startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                    }
+                })
+                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    public void onClick(final DialogInterface dialog, final int id) {
+                        dialog.cancel();
+                    }
+                });
+        final AlertDialog alert = builder.create();
+        alert.show();
+    }
+
+    /**
+     * Method displays a message about the switched off network and allows it to be enabled in the settings.
+     */
+    private void buildAlertMessageNoNetwork() {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Your mobile data seems to be disabled, do you want to enable it?")
+                .setCancelable(false)
+                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    public void onClick(final DialogInterface dialog, final int id) {
+                        startActivity(new Intent(Settings.ACTION_DATA_ROAMING_SETTINGS));
+                    }
+                })
+                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    public void onClick(final DialogInterface dialog, final int id) {
+                        dialog.cancel();
+                    }
+                });
+        final AlertDialog alert = builder.create();
+        alert.show();
     }
 }
